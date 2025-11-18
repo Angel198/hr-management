@@ -2,6 +2,9 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
 
 import designationRoutes from "./routes/designations.js";
 import employeeRoutes from "./routes/employees.js";
@@ -21,6 +24,10 @@ const app = express();
 
 // Track database connection status (declare early)
 let dbConnected = false;
+
+// Get directory paths for serving static files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
@@ -46,57 +53,7 @@ app.use("/api/admin/worksheet", adminWorksheetRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/type-of-work", typeOfWorkRoutes);
 
-const PORT = process.env.PORT || 5050;
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://shruti_db_user:Mr2LQGNLr2o7XRxd@hrms.aeuawyb.mongodb.net/HRMS?retryWrites=true&w=majority";
-
-// Start server regardless of database connection
-let server;
-
-try {
-  server = app.listen(PORT, () => {
-    console.log(`🚀 Server listening on port ${PORT}`);
-    console.log(`📡 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔌 API base: http://localhost:${PORT}/api`);
-    
-    // Attempt to connect to MongoDB
-    connectToDatabase();
-  });
-
-  server.on("error", (error) => {
-    if (error.code === "EADDRINUSE") {
-      console.error(`\n❌ Port ${PORT} is already in use!`);
-      console.error("\n📝 To fix this:");
-      console.error(`1. Run: npm run kill-port`);
-      console.error(`2. Or manually: lsof -i :${PORT} then kill -9 <PID>`);
-      console.error(`3. Or use a different port: PORT=5051 npm run dev\n`);
-      // Don't exit, let the user fix it
-    } else {
-      console.error("❌ Server error:", error.message);
-    }
-  });
-
-  // Handle uncaught exceptions
-  process.on("uncaughtException", (error) => {
-    console.error("❌ Uncaught Exception:", error);
-    // Don't exit, keep server running
-  });
-
-  // Handle unhandled promise rejections
-  process.on("unhandledRejection", (reason, promise) => {
-    console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
-    // Don't exit, keep server running
-  });
-} catch (error) {
-  console.error("❌ Failed to start server:", error.message);
-  if (error.code === "EADDRINUSE") {
-    console.error(`\n💡 Port ${PORT} is in use. Run: npm run kill-port\n`);
-  }
-  process.exit(1);
-}
-
-// Enhanced health check endpoint
+// Health check endpoint (before catch-all route)
 app.get("/health", (_req, res) => {
   res.json({ 
     status: "ok", 
@@ -104,6 +61,81 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Serve static files from React app (frontend)
+// In production, serve from ../dist (relative to server folder)
+// In development, this won't exist, so we'll skip it
+const distPath = path.join(__dirname, "..", "dist");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  console.log("📦 Serving frontend from:", distPath);
+  
+  // Catch all handler: send back React's index.html file for client-side routing
+  // This must be last, after all API routes
+  app.get("*", (req, res) => {
+    // Don't serve index.html for API routes or health check
+    if (req.path.startsWith("/api") || req.path === "/health") {
+      return res.status(404).json({ error: "Endpoint not found" });
+    }
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+} else {
+  console.log("⚠️  Frontend dist folder not found. API-only mode.");
+}
+
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://shruti_db_user:Mr2LQGNLr2o7XRxd@hrms.aeuawyb.mongodb.net/HRMS?retryWrites=true&w=majority";
+
+// Initialize database connection (for both serverless and regular server)
+connectToDatabase();
+
+// Export the app for Vercel serverless functions
+export default app;
+
+// Only start HTTP server if not in Vercel environment
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5050;
+  let server;
+
+  try {
+    server = app.listen(PORT, () => {
+      console.log(`🚀 Server listening on port ${PORT}`);
+      console.log(`📡 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔌 API base: http://localhost:${PORT}/api`);
+    });
+
+    server.on("error", (error) => {
+      if (error.code === "EADDRINUSE") {
+        console.error(`\n❌ Port ${PORT} is already in use!`);
+        console.error("\n📝 To fix this:");
+        console.error(`1. Run: npm run kill-port`);
+        console.error(`2. Or manually: lsof -i :${PORT} then kill -9 <PID>`);
+        console.error(`3. Or use a different port: PORT=5051 npm run dev\n`);
+      } else {
+        console.error("❌ Server error:", error.message);
+      }
+    });
+
+    // Handle uncaught exceptions
+    process.on("uncaughtException", (error) => {
+      console.error("❌ Uncaught Exception:", error);
+    });
+
+    // Handle unhandled promise rejections
+    process.on("unhandledRejection", (reason, promise) => {
+      console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error.message);
+    if (error.code === "EADDRINUSE") {
+      console.error(`\n💡 Port ${PORT} is in use. Run: npm run kill-port\n`);
+    }
+    process.exit(1);
+  }
+} else {
+  console.log("🌐 Running in Vercel serverless mode");
+}
 
 // Database connection function with retry logic
 function connectToDatabase(retryCount = 0) {
