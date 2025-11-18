@@ -14,6 +14,8 @@ const employeeSchema = new mongoose.Schema(
       enum: ["Active", "On Leave", "Inactive"],
       default: "Active",
     },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );

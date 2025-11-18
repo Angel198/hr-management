@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { employeeLogin } from "@/lib/api";
+import { employeeLogin, requestPasswordReset } from "@/lib/api";
 import { Eye, EyeOff } from "lucide-react";
 
 const ADMIN_USERS = [
@@ -26,6 +27,9 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotDialogOpen, setIsForgotDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -105,6 +109,26 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetEmail.trim()) {
+      toast.error("Please enter your email.");
+      return;
+    }
+    setIsResetSubmitting(true);
+    try {
+      await requestPasswordReset(resetEmail.trim().toLowerCase());
+      toast.success("If an account exists for that email, a reset link has been sent.");
+      setResetEmail("");
+      setIsForgotDialogOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to process request.";
+      toast.error(message);
+    } finally {
+      setIsResetSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md">
@@ -157,12 +181,46 @@ export default function Auth() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <a href="#" className="text-primary hover:underline">
+            <button
+              type="button"
+              onClick={() => setIsForgotDialogOpen(true)}
+              className="text-primary hover:underline"
+            >
               Forgot password?
-            </a>
+            </button>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isForgotDialogOpen} onOpenChange={setIsForgotDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogDescription>Enter your company email and wewill send you a reset link.</DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleForgotPassword}>
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="name@company.com"
+                value={resetEmail}
+                onChange={(event) => setResetEmail(event.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setIsForgotDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isResetSubmitting}>
+                {isResetSubmitting ? "Sending..." : "Send reset link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

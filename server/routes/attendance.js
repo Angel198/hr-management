@@ -6,7 +6,7 @@ const router = express.Router();
 // GET all attendance records
 router.get("/", async (req, res) => {
   try {
-    const { employeeId, date, startDate, endDate } = req.query;
+    const { employeeId, date, startDate, endDate, status } = req.query;
     const query = {};
 
     if (employeeId) {
@@ -23,6 +23,17 @@ router.get("/", async (req, res) => {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
+    }
+
+    if (status && status !== "all") {
+      const normalizedStatus = status.toString().toLowerCase();
+      if (normalizedStatus === "present") {
+        query.status = { $in: ["Present", "On Time"] };
+      } else if (normalizedStatus === "absent") {
+        query.status = "Absent";
+      } else {
+        query.status = status;
+      }
     }
 
     const attendance = await Attendance.find(query).sort({ date: -1 });

@@ -15,6 +15,7 @@ import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
 import LeaveManagement from "./pages/LeaveManagement";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Designation from "./pages/Master/Designation";
 import Holidays from "./pages/Master/Holidays";
 import Events from "./pages/Master/Events";
@@ -37,6 +38,9 @@ import EmployeeEvents from "@/pages/employee/master/Events";
 import EmployeeProfile from "@/pages/employee/master/Profile";
 import EmployeeWorksheet from "@/pages/employee/Worksheet";
 import Worksheets from "@/pages/Worksheets";
+import ClientTaskFilterPage from "@/pages/admin/ClientTaskFilter";
+import InvoiceEditorPage from "@/pages/admin/InvoiceEditor";
+import ClientInvoicesPage from "@/pages/admin/ClientInvoices";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +63,7 @@ const RequireAuth = ({ allowedRoles }: { allowedRoles?: UserRole[] }) => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
+    <Route path="/reset-password" element={<ResetPassword />} />
 
     <Route element={<RequireAuth allowedRoles={["admin"]} />}>
       <Route path="/admin" element={<AdminShell />}>
@@ -67,6 +72,9 @@ const AppRoutes = () => (
         <Route path="attendance" element={<Attendance />} />
         <Route path="leave" element={<LeaveManagement />} />
         <Route path="worksheets" element={<Worksheets />} />
+        <Route path="tasks/client-filter" element={<ClientTaskFilterPage />} />
+        <Route path="invoice/:invoiceId" element={<InvoiceEditorPage />} />
+        <Route path="client/:clientId/invoices" element={<ClientInvoicesPage />} />
         <Route
           path="payroll"
           element={

@@ -22,6 +22,7 @@ const taskSchema = new mongoose.Schema({
     ref: "TypeOfWork",
   },
   typeOfWorkId: { type: String },
+  is_invoiced: { type: Boolean, default: false },
 });
 
 const dailyWorkSheetSchema = new mongoose.Schema(

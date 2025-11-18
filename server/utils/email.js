@@ -70,3 +70,39 @@ export const sendEmployeeCredentialsEmail = async ({ to, name, employeeId, passw
   });
 };
 
+export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
+  const subject = "Reset your HRMS password";
+  const text = [
+    `Hello ${name || "there"},`,
+    "",
+    "We received a request to reset your HRMS password.",
+    `Reset your password: ${resetUrl}`,
+    "",
+    "If you did not request a password reset, you can safely ignore this email.",
+    "",
+    "Best,",
+    "HRMS Team",
+  ].join("\n");
+
+  const html = `
+    <p>Hello ${name || "there"},</p>
+    <p>We received a request to reset your HRMS password.</p>
+    <p><a href="${resetUrl}" target="_blank" rel="noopener noreferrer">Reset your password</a></p>
+    <p>If you did not request a password reset, you can safely ignore this email.</p>
+    <p>Best,<br />HRMS Team</p>
+  `;
+
+  if (!transporter) {
+    console.log("\n[Email disabled]", { subject, to, text, html });
+    return;
+  }
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@hrms.local",
+    to,
+    subject,
+    text,
+    html,
+  });
+};
+

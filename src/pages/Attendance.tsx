@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, Filter } from "lucide-react";
+import { Download, Filter } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { fetchAttendance, fetchEmployees } from "@/lib/api";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 type AttendanceRecord = {
   _id: string;
@@ -37,17 +39,19 @@ type Employee = {
   name: string;
 };
 
-const getCachedAttendance = (date: string): AttendanceRecord[] => {
+const CACHE_KEY = "adminAttendancePrefetch";
+
+const getCachedAttendance = (date: string, status: string): AttendanceRecord[] => {
   if (typeof window === "undefined") {
     return [];
   }
   try {
-    const cached = sessionStorage.getItem("adminAttendancePrefetch");
+    const cached = sessionStorage.getItem(CACHE_KEY);
     if (!cached) {
       return [];
     }
     const parsed = JSON.parse(cached);
-    if (parsed.date === date && Array.isArray(parsed.data)) {
+    if (parsed.date === date && parsed.status === status && Array.isArray(parsed.data)) {
       return parsed.data as AttendanceRecord[];
     }
   } catch (error) {
@@ -58,35 +62,41 @@ const getCachedAttendance = (date: string): AttendanceRecord[] => {
 
 const Attendance = () => {
   const initialDate = new Date().toISOString().split("T")[0];
-  const initialCachedAttendance = getCachedAttendance(initialDate);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const initialCachedAttendance = getCachedAttendance(initialDate, "all");
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(initialCachedAttendance);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(initialCachedAttendance.length === 0);
   const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
+        const attendanceParams: { date: string; status?: string } = { date: selectedDate };
+        if (statusFilter !== "all") {
+          attendanceParams.status = statusFilter;
+        }
         const [attendanceData, employeesData] = await Promise.all([
-          fetchAttendance({ date: selectedDate }),
+          fetchAttendance(attendanceParams),
           fetchEmployees(),
         ]);
         setAttendance(attendanceData);
         setEmployees(employeesData);
 
-         if (typeof window !== "undefined") {
-           sessionStorage.setItem(
-             "adminAttendancePrefetch",
-             JSON.stringify({
-               date: selectedDate,
-               data: attendanceData,
-               fetchedAt: new Date().toISOString(),
-             }),
-           );
-         }
+        if (typeof window !== "undefined" && statusFilter === "all") {
+          sessionStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({
+              date: selectedDate,
+              status: statusFilter,
+              data: attendanceData,
+              fetchedAt: new Date().toISOString(),
+            }),
+          );
+        }
       } catch (err) {
         console.error(err);
         toast.error("Failed to load attendance");
@@ -95,7 +105,7 @@ const Attendance = () => {
       }
     };
     void loadData();
-  }, [selectedDate]);
+  }, [selectedDate, statusFilter]);
 
   const getEmployeeName = (employeeId: string) => {
     const employee = employees.find((e) => e.id === employeeId);
@@ -123,6 +133,53 @@ const Attendance = () => {
     return { present, onLeave, absent, late };
   }, [attendance]);
 
+  const buildExportRows = () =>
+    filteredAttendance.map((record) => ({
+      date: record.date ? format(new Date(record.date), "yyyy-MM-dd") : selectedDate,
+      employee: getEmployeeName(record.employeeId),
+      employeeId: record.employeeId,
+      checkIn: record.checkIn || "",
+      checkOut: record.checkOut || "",
+      totalHours: record.workHours || "",
+      status: record.status,
+    }));
+
+  const handleExport = () => {
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      toast.info("No attendance records to export.");
+      return;
+    }
+
+    const headers = ["Date", "Employee", "Employee ID", "Check In", "Check Out", "Total Hours", "Status"];
+    const escapeValue = (value: string) => `"${(value ?? "").toString().replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [
+          escapeValue(row.date),
+          escapeValue(row.employee),
+          escapeValue(row.employeeId),
+          escapeValue(row.checkIn),
+          escapeValue(row.checkOut),
+          escapeValue(row.totalHours),
+          escapeValue(row.status),
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `attendance_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} attendance record${rows.length > 1 ? "s" : ""}`);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -139,25 +196,27 @@ const Attendance = () => {
           <p className="text-muted-foreground mt-2">Track and manage employee attendance</p>
         </div>
         <div className="flex gap-2">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="present">Present</SelectItem>
-              <SelectItem value="absent">Absent</SelectItem>
-              <SelectItem value="On Leave">On Leave</SelectItem>
-              <SelectItem value="Late">Late</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" className="gap-2">
+          <div className="hidden md:flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
+                <SelectItem value="On Leave">On Leave</SelectItem>
+                <SelectItem value="Late">Late</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" className="gap-2" onClick={handleExport}>
             <Download className="w-4 h-4" />
             Export
           </Button>
@@ -217,10 +276,53 @@ const Attendance = () => {
             <CardTitle>
               Today&apos;s Attendance - {new Date(selectedDate).toLocaleDateString()}
             </CardTitle>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="w-4 h-4" />
-              Filter
-            </Button>
+            <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="w-4 h-4" />
+                  Filter
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Filter Attendance</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground" htmlFor="sheet-date">
+                      Date
+                    </label>
+                    <input
+                      id="sheet-date"
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Status</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="present">Present</SelectItem>
+                        <SelectItem value="absent">Absent</SelectItem>
+                        <SelectItem value="On Leave">On Leave</SelectItem>
+                        <SelectItem value="Late">Late</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <SheetFooter className="mt-6">
+                  <Button onClick={() => setIsFilterOpen(false)} className="w-full">
+                    Apply Filters
+                  </Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
           </div>
         </CardHeader>
         <CardContent>

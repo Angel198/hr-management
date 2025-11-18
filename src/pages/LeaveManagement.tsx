@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar, Filter, Download } from "lucide-react";
+import { format } from "date-fns";
 import {
   Table,
   TableBody,
@@ -106,6 +107,70 @@ const LeaveManagement = () => {
 
     return filtered;
   }, [leaves, employeeNameFilter, leaveTypeFilter, employees]);
+
+  const buildExportRows = () =>
+    filteredLeaves.map((leave) => ({
+      employee: getEmployeeName(leave.employeeId),
+      employeeId: leave.employeeId ?? "",
+      type: leave.type,
+      from: leave.from,
+      to: leave.to,
+      days: leave.days,
+      status: leave.status,
+      approver: leave.approver ?? "",
+      notes: leave.notes ?? "",
+      appliedOn: leave.createdAt ?? "",
+    }));
+
+  const handleExport = () => {
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      toast.info("No leave requests to export.");
+      return;
+    }
+
+    const headers = [
+      "Employee",
+      "Employee ID",
+      "Leave Type",
+      "From",
+      "To",
+      "Days",
+      "Status",
+      "Approver",
+      "Notes",
+      "Applied On",
+    ];
+    const escapeValue = (value: string | number) => `"${(value ?? "").toString().replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [
+          escapeValue(row.employee),
+          escapeValue(row.employeeId),
+          escapeValue(row.type),
+          escapeValue(row.from),
+          escapeValue(row.to),
+          escapeValue(row.days),
+          escapeValue(row.status),
+          escapeValue(row.approver),
+          escapeValue(row.notes),
+          escapeValue(row.appliedOn ? format(new Date(row.appliedOn), "yyyy-MM-dd") : ""),
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `leave_requests_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} leave request${rows.length > 1 ? "s" : ""}`);
+  };
 
   const handleApprove = async (id: string) => {
     setProcessingId(id);
@@ -223,7 +288,7 @@ const LeaveManagement = () => {
           <div className="flex items-center justify-between">
             <CardTitle>Leave Requests</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
                 <Download className="w-4 h-4" />
                 Export
               </Button>

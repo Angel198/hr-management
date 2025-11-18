@@ -15,6 +15,7 @@ import attendanceRoutes from "./routes/attendance.js";
 import authRoutes from "./routes/auth.js";
 import worksheetRoutes from "./routes/worksheetRoutes.js";
 import adminWorksheetRoutes from "./routes/adminWorksheetRoutes.js";
+import adminInvoiceRoutes from "./routes/adminInvoiceRoutes.js";
 import clientRoutes from "./routes/clients.js";
 import typeOfWorkRoutes from "./routes/typeOfWork.js";
 
@@ -50,6 +51,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/worksheet", worksheetRoutes);
 app.use("/api/admin/worksheet", adminWorksheetRoutes);
+app.use("/api/admin", adminInvoiceRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/type-of-work", typeOfWorkRoutes);
 

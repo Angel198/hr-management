@@ -215,12 +215,19 @@ export const deleteEvent = (id: string) =>
   });
 
 // Attendance
-export const fetchAttendance = (params?: { employeeId?: string; date?: string; startDate?: string; endDate?: string }) => {
+export const fetchAttendance = (params?: {
+  employeeId?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+}) => {
   const queryParams = new URLSearchParams();
   if (params?.employeeId) queryParams.append("employeeId", params.employeeId);
   if (params?.date) queryParams.append("date", params.date);
   if (params?.startDate) queryParams.append("startDate", params.startDate);
   if (params?.endDate) queryParams.append("endDate", params.endDate);
+  if (params?.status && params.status !== "all") queryParams.append("status", params.status);
   const query = queryParams.toString();
   return fetchWithErrorHandling(`${API_BASE_URL}/attendance${query ? `?${query}` : ""}`).catch((error) => {
     console.error("fetchAttendance error:", error);
@@ -282,6 +289,20 @@ export const getTodayAttendance = (employeeId: string) =>
 // Auth
 export const employeeLogin = (payload: { email: string; password: string }) =>
   fetchWithErrorHandling(`${API_BASE_URL}/auth/employee`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+export const requestPasswordReset = (email: string) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+export const resetPassword = (payload: { email: string; token: string; password: string }) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/auth/reset-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -372,6 +393,53 @@ export const reopenWorksheetAdmin = (worksheetId: string, admin_comments?: strin
 
 export const getWorksheetStats = () =>
   fetchWithErrorHandling(`${API_BASE_URL}/admin/worksheet/stats/summary`);
+
+// Admin Invoice APIs
+export const fetchClientTasksForInvoice = (
+  clientId: string,
+  params?: { startDate?: string; endDate?: string; employeeId?: string; status?: string },
+) => {
+  const queryParams = new URLSearchParams();
+  if (params?.startDate) queryParams.append("startDate", params.startDate);
+  if (params?.endDate) queryParams.append("endDate", params.endDate);
+  if (params?.employeeId && params.employeeId !== "all") queryParams.append("employeeId", params.employeeId);
+  if (params?.status && params.status !== "all") queryParams.append("status", params.status);
+  const query = queryParams.toString();
+  return fetchWithErrorHandling(
+    `${API_BASE_URL}/admin/tasks/client/${clientId}${query ? `?${query}` : ""}`,
+  );
+};
+
+export const createInvoiceFromTasks = (payload: {
+  client_id: string;
+  task_ids: Array<{ worksheetId: string; taskId: string }>;
+}) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/admin/invoice/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+export const fetchInvoiceById = (invoiceId: string) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/admin/invoice/view/${invoiceId}`);
+
+export const updateInvoiceById = (
+  invoiceId: string,
+  payload: { tasks: any[]; tax?: number; notes?: string },
+) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/admin/invoice/update/${invoiceId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+export const finalizeInvoiceById = (invoiceId: string) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/admin/invoice/finalize/${invoiceId}`, {
+    method: "POST",
+  });
+
+export const fetchInvoicesForClient = (clientId: string) =>
+  fetchWithErrorHandling(`${API_BASE_URL}/admin/invoice/client/${clientId}`);
 
 // Client Master APIs
 export const fetchClients = () =>

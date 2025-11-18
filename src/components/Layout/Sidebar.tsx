@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Clock, 
-  Calendar, 
+import {
+  LayoutDashboard,
+  Users,
+  Clock,
+  Calendar,
   Settings,
   ChevronDown,
   Target,
@@ -13,6 +13,7 @@ import {
   Bell,
   FileText,
   Briefcase,
+  ReceiptText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -25,6 +26,7 @@ const navItems = [
   { to: "/admin/attendance", icon: Clock, label: "Attendance" },
   { to: "/admin/leave", icon: Calendar, label: "Leave Management" },
   { to: "/admin/worksheets", icon: FileText, label: "Work Sheets" },
+  { to: "/admin/tasks/client-filter", icon: ReceiptText, label: "Client Tasks" },
   { to: "/admin/settings", icon: Settings, label: "Settings" },
 ] as const;
 

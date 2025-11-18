@@ -57,6 +57,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { useDesignations } from "@/contexts/DesignationContext";
 import {
@@ -65,6 +73,7 @@ import {
   updateEmployee,
   deleteEmployee,
 } from "@/lib/api";
+import { format } from "date-fns";
 
 type EmployeeStatus = "Active" | "On Leave" | "Inactive";
 
@@ -77,6 +86,8 @@ type Employee = {
   department: string;
   designation: string;
   status: EmployeeStatus;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -112,6 +123,9 @@ const Employees = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [designationFilter, setDesignationFilter] = useState<string>("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const designationOptions = useMemo(
     () =>
       designations
@@ -127,20 +141,41 @@ const Employees = () => {
     return Array.from(values).filter(Boolean);
   }, [designationOptions, formData.designation]);
 
+  const departmentOptions = useMemo(() => {
+    const values = new Set<string>();
+    employees.forEach((emp) => {
+      if (emp.department) {
+        values.add(emp.department);
+      }
+    });
+    return Array.from(values);
+  }, [employees]);
+
+  const designationFilterOptions = useMemo(() => {
+    const values = new Set<string>();
+    employees.forEach((emp) => {
+      if (emp.designation) {
+        values.add(emp.designation);
+      }
+    });
+    return Array.from(values);
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return employees;
-    }
-
-    return employees.filter((emp) =>
-      emp.name.toLowerCase().includes(term) ||
-      emp.email.toLowerCase().includes(term) ||
-      emp.id.toLowerCase().includes(term) ||
-      emp.department.toLowerCase().includes(term) ||
-      emp.designation.toLowerCase().includes(term)
-    );
-  }, [employees, searchTerm]);
+    return employees.filter((emp) => {
+      const matchesSearch =
+        !term ||
+        emp.name.toLowerCase().includes(term) ||
+        emp.email.toLowerCase().includes(term) ||
+        emp.id.toLowerCase().includes(term) ||
+        emp.department.toLowerCase().includes(term) ||
+        emp.designation.toLowerCase().includes(term);
+      const matchesDepartment = departmentFilter === "all" || emp.department === departmentFilter;
+      const matchesDesignation = designationFilter === "all" || emp.designation === designationFilter;
+      return matchesSearch && matchesDepartment && matchesDesignation;
+    });
+  }, [employees, searchTerm, departmentFilter, designationFilter]);
 
   const resetForm = () => {
     setFormData({
@@ -320,6 +355,83 @@ const Employees = () => {
     void performDelete();
   };
 
+  const activeFilters =
+    (departmentFilter !== "all" ? 1 : 0) + (designationFilter !== "all" ? 1 : 0);
+
+  const resetFilters = () => {
+    setDepartmentFilter("all");
+    setDesignationFilter("all");
+  };
+
+  const buildExportRows = () => {
+    const data =
+      searchTerm.trim() === "" && departmentFilter === "all" && designationFilter === "all"
+        ? employees
+        : filteredEmployees;
+    return data.map((emp) => ({
+      id: emp.id,
+      name: emp.name,
+      email: emp.email,
+      phone: emp.phone,
+      department: emp.department,
+      designation: emp.designation,
+      status: emp.status,
+      createdAt: emp.createdAt ? format(new Date(emp.createdAt), "yyyy-MM-dd HH:mm") : "",
+      updatedAt: emp.updatedAt ? format(new Date(emp.updatedAt), "yyyy-MM-dd HH:mm") : "",
+    }));
+  };
+
+  const handleExport = () => {
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      toast.info("No employees available to export.");
+      return;
+    }
+
+    const headers = [
+      "Employee ID",
+      "Name",
+      "Email",
+      "Phone",
+      "Department",
+      "Designation",
+      "Status",
+      "Created At",
+      "Updated At",
+    ];
+    const escapeValue = (value: string) =>
+      `"${(value ?? "").toString().replace(/"/g, '""')}"`;
+
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [
+          escapeValue(row.id),
+          escapeValue(row.name),
+          escapeValue(row.email),
+          escapeValue(row.phone),
+          escapeValue(row.department),
+          escapeValue(row.designation),
+          escapeValue(row.status),
+          escapeValue(row.createdAt),
+          escapeValue(row.updatedAt),
+        ].join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const timestamp = format(new Date(), "yyyyMMdd_HHmmss");
+    link.download = `employee_directory_${timestamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} employee${rows.length > 1 ? "s" : ""}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -337,7 +449,7 @@ const Employees = () => {
         </Button>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -347,11 +459,74 @@ const Employees = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="gap-2">
-          <Filter className="w-4 h-4" />
-          Filters
-        </Button>
-        <Button variant="outline" className="gap-2">
+        {activeFilters > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="secondary">{activeFilters} filter{activeFilters > 1 ? "s" : ""} active</Badge>
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              Clear
+            </Button>
+          </div>
+        )}
+        <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Filter className="w-4 h-4" />
+              Filters
+            </Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Filter Employees</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-5">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">Department</Label>
+                <Select
+                  value={departmentFilter}
+                  onValueChange={(value) => setDepartmentFilter(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departmentOptions.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-muted-foreground">Designation</Label>
+                <Select
+                  value={designationFilter}
+                  onValueChange={(value) => setDesignationFilter(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select designation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Designations</SelectItem>
+                    {designationFilterOptions.map((designation) => (
+                      <SelectItem key={designation} value={designation}>
+                        {designation}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <SheetFooter className="mt-6 gap-3">
+              <Button variant="outline" onClick={resetFilters}>
+                Clear Filters
+              </Button>
+              <Button onClick={() => setIsFilterOpen(false)}>Apply Filters</Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+        <Button variant="outline" className="gap-2" onClick={handleExport}>
           <Download className="w-4 h-4" />
           Export
         </Button>

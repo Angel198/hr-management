@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, CheckCircle2, XCircle, RotateCcw, Eye, Calendar, Filter } from "lucide-react";
+import { Search, CheckCircle2, XCircle, RotateCcw, Eye, Calendar, Filter, Download } from "lucide-react";
 import { toast } from "sonner";
 import { fetchEmployees, fetchClients, fetchTypesOfWork } from "@/lib/api";
 import {
@@ -46,6 +46,7 @@ import {
   reopenWorksheetAdmin,
   getWorksheetStats,
 } from "@/lib/api";
+import { format } from "date-fns";
 
 type Task = {
   _id: string;
@@ -317,6 +318,84 @@ const Worksheets = () => {
     return filtered;
   }, [worksheets, searchTerm, clientFilter, typeOfWorkFilter]);
 
+  const buildWorksheetExportRows = () =>
+    filteredWorksheets.map((ws) => {
+      const totalHours = ws.tasks?.reduce((sum, task) => sum + (task.hours_spent || 0), 0) || 0;
+      return {
+        date: ws.date ? format(new Date(ws.date), "yyyy-MM-dd") : "",
+        employeeName: ws.employee?.name || "",
+        employeeId: ws.employee?.id || "",
+        employeeEmail: ws.employee?.email || "",
+        department: ws.employee?.department || "",
+        designation: ws.employee?.designation || "",
+        client: ws.client?.name || "",
+        typeOfWork: ws.typeOfWork?.name || "",
+        status: ws.worksheet_status,
+        totalTasks: ws.tasks?.length || 0,
+        totalHours: totalHours.toFixed(2),
+        adminComments: ws.admin_comments || "",
+        tasks: ws.tasks
+          ?.map((task) => `${task.title} (${task.status}) ${task.hours_spent ?? 0}h`)
+          .join(" | ") || "",
+      };
+    });
+
+  const handleExport = () => {
+    const rows = buildWorksheetExportRows();
+    if (rows.length === 0) {
+      toast.info("No worksheets to export.");
+      return;
+    }
+
+    const headers = [
+      "Date",
+      "Employee Name",
+      "Employee ID",
+      "Employee Email",
+      "Department",
+      "Designation",
+      "Client",
+      "Type of Work",
+      "Status",
+      "Total Tasks",
+      "Total Hours",
+      "Admin Comments",
+      "Task Summary",
+    ];
+    const escapeValue = (value: string | number) => `"${(value ?? "").toString().replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        [
+          escapeValue(row.date),
+          escapeValue(row.employeeName),
+          escapeValue(row.employeeId),
+          escapeValue(row.employeeEmail),
+          escapeValue(row.department),
+          escapeValue(row.designation),
+          escapeValue(row.client),
+          escapeValue(row.typeOfWork),
+          escapeValue(row.status),
+          escapeValue(row.totalTasks),
+          escapeValue(row.totalHours),
+          escapeValue(row.adminComments),
+          escapeValue(row.tasks),
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `worksheets_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} worksheet${rows.length > 1 ? "s" : ""}`);
+  };
+
   const openReviewDialog = (worksheet: Worksheet) => {
     setSelectedWorksheet(worksheet);
     setIsReviewDialogOpen(true);
@@ -467,6 +546,10 @@ const Worksheets = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              <Button variant="outline" className="gap-2" onClick={handleExport}>
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
               <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon" className="shrink-0">
