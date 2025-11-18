@@ -55,15 +55,37 @@ type Task = {
   typeOfWork?: { _id: string; name: string; code: string; category: string };
 };
 
+type Employee = {
+  id?: string;
+  name?: string;
+  email?: string;
+  [key: string]: unknown;
+};
+
 type Worksheet = {
   _id: string;
-  employee: any;
+  employee: Employee;
   date: string;
   client?: { _id: string; name: string; code: string };
   typeOfWork?: { _id: string; name: string; code: string; category: string };
   tasks: Task[];
   worksheet_status: "draft" | "submitted" | "approved" | "rejected" | "reopened";
   admin_comments: string;
+};
+
+type Client = {
+  _id?: string;
+  name?: string;
+  code?: string;
+  [key: string]: unknown;
+};
+
+type TypeOfWork = {
+  _id?: string;
+  name?: string;
+  code?: string;
+  category?: string;
+  [key: string]: unknown;
 };
 
 const statusColors = {
@@ -92,8 +114,8 @@ const Worksheet = () => {
   });
 
   const employeeId = user?.employeeId || "";
-  const [clients, setClients] = useState<any[]>([]);
-  const [typesOfWork, setTypesOfWork] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [typesOfWork, setTypesOfWork] = useState<TypeOfWork[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
   useEffect(() => {

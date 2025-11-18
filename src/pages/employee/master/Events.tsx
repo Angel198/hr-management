@@ -6,8 +6,17 @@ import { CalendarDays, Clock3, MapPin, Share2 } from "lucide-react";
 import { fetchEvents } from "@/lib/api";
 import { toast } from "sonner";
 
+type Event = {
+  _id?: string;
+  name?: string;
+  date?: string;
+  location?: string;
+  status?: string;
+  [key: string]: unknown;
+};
+
 export default function EmployeeEvents() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

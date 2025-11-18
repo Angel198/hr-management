@@ -19,9 +19,20 @@ const contactDetails = [
   { label: "Mobile Number", value: "+91 98765 43210", icon: Phone },
 ] as const;
 
+type Employee = {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  employeeId?: string;
+  designation?: string;
+  department?: string;
+  [key: string]: unknown;
+};
+
 const Profile = () => {
   const { user } = useAuth();
-  const [employee, setEmployee] = useState<any>(null);
+  const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [employeeId, setEmployeeId] = useState<string>("");
 

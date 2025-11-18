@@ -9,12 +9,20 @@ import { HolidayCard } from "@/components/employee/HolidayCard";
 import { fetchHolidays } from "@/lib/api";
 import { toast } from "sonner";
 
+type Holiday = {
+  _id?: string;
+  name?: string;
+  date?: string;
+  category?: string;
+  [key: string]: unknown;
+};
+
 const FILTERS: Array<EmployeeHolidayCategory | "All"> = ["All", "Company", "Event", "Birthday"];
 
 export default function EmployeeHolidays() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<EmployeeHolidayCategory | "All">("All");
-  const [holidays, setHolidays] = useState<any[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

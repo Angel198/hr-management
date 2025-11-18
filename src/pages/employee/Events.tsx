@@ -15,8 +15,18 @@ import {
 import { fetchEvents } from "@/lib/api";
 import { toast } from "sonner";
 
+type Event = {
+  _id?: string;
+  name?: string;
+  date?: string;
+  location?: string;
+  status?: string;
+  description?: string;
+  [key: string]: unknown;
+};
+
 const Events = () => {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -113,6 +123,11 @@ const Events = () => {
     });
   }, [events, dateFilter, statusFilter, searchTerm]);
 
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set(events.map((e) => e.status).filter(Boolean));
+    return Array.from(statuses);
+  }, [events]);
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -120,11 +135,6 @@ const Events = () => {
       </div>
     );
   }
-
-  const uniqueStatuses = useMemo(() => {
-    const statuses = new Set(events.map((e) => e.status).filter(Boolean));
-    return Array.from(statuses);
-  }, [events]);
 
   return (
     <div className="space-y-8">

@@ -19,12 +19,20 @@ type HolidayEntry = {
   highlight: string;
 };
 
+type Holiday = {
+  _id?: string;
+  name?: string;
+  date?: string;
+  category?: string;
+  [key: string]: unknown;
+};
+
 const categories: Array<HolidayType | "All"> = ["All", "Company", "Event", "Celebration"];
 
 const Holidays = () => {
   const [selectedCategory, setSelectedCategory] = useState<HolidayType | "All">("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [holidays, setHolidays] = useState<any[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

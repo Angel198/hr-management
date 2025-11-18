@@ -86,6 +86,29 @@ type Worksheet = {
   admin_comments: string;
 };
 
+type Employee = {
+  _id?: string;
+  name?: string;
+  email?: string;
+  employeeId?: string;
+  [key: string]: unknown;
+};
+
+type Client = {
+  _id?: string;
+  name?: string;
+  code?: string;
+  [key: string]: unknown;
+};
+
+type TypeOfWork = {
+  _id?: string;
+  name?: string;
+  code?: string;
+  category?: string;
+  [key: string]: unknown;
+};
+
 const statusColors = {
   draft: "bg-gray-100 text-gray-700",
   submitted: "bg-blue-100 text-blue-700",
@@ -96,7 +119,7 @@ const statusColors = {
 
 const Worksheets = () => {
   const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -120,8 +143,8 @@ const Worksheets = () => {
   const [typeOfWorkFilter, setTypeOfWorkFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState<any[]>([]);
-  const [typesOfWork, setTypesOfWork] = useState<any[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [typesOfWork, setTypesOfWork] = useState<TypeOfWork[]>([]);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
   useEffect(() => {
@@ -189,7 +212,7 @@ const Worksheets = () => {
   const loadWorksheets = async () => {
     setIsLoading(true);
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (dateFilter) {
         params.date = dateFilter;
       } else if (startDateFilter && endDateFilter) {

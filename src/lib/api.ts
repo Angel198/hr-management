@@ -11,6 +11,23 @@ const resolveDefaultApiBase = () => {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? resolveDefaultApiBase();
 
+// Type definitions
+interface Client {
+  _id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  [key: string]: unknown;
+}
+
+interface TypeOfWork {
+  _id?: string;
+  name: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 // Log API URL in development for debugging
 if (import.meta.env.DEV) {
   console.log("API Base URL:", API_BASE_URL);
@@ -380,14 +397,14 @@ export const fetchClients = () =>
 export const fetchClient = (id: string) =>
   fetchWithErrorHandling(`${API_BASE_URL}/clients/${id}`);
 
-export const createClient = (client: any) =>
+export const createClient = (client: Client) =>
   fetchWithErrorHandling(`${API_BASE_URL}/clients`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(client),
   });
 
-export const updateClient = (id: string, client: any) =>
+export const updateClient = (id: string, client: Client) =>
   fetchWithErrorHandling(`${API_BASE_URL}/clients/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -406,14 +423,14 @@ export const fetchTypesOfWork = () =>
 export const fetchTypeOfWork = (id: string) =>
   fetchWithErrorHandling(`${API_BASE_URL}/type-of-work/${id}`);
 
-export const createTypeOfWork = (typeOfWork: any) =>
+export const createTypeOfWork = (typeOfWork: TypeOfWork) =>
   fetchWithErrorHandling(`${API_BASE_URL}/type-of-work`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(typeOfWork),
   });
 
-export const updateTypeOfWork = (id: string, typeOfWork: any) =>
+export const updateTypeOfWork = (id: string, typeOfWork: TypeOfWork) =>
   fetchWithErrorHandling(`${API_BASE_URL}/type-of-work/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

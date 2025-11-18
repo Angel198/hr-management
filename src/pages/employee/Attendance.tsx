@@ -46,7 +46,7 @@ const statusVariant: Record<AttendanceRecord["status"], "default" | "secondary" 
 };
 
 const Attendance = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [search, setSearch] = useState("");
   const [filteredStatus, setFilteredStatus] = useState<AttendanceRecord["status"] | "All">("All");
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -351,7 +351,6 @@ const Attendance = () => {
                   Reload Page
                 </Button>
                 <Button onClick={() => {
-                  const { logout } = useAuth();
                   logout();
                   window.location.href = "/auth";
                 }} variant="default">

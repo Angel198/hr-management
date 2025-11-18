@@ -97,16 +97,57 @@ const statusBadgeVariant: Record<EventItem["status"], "default" | "secondary" | 
   Reminder: "outline",
 };
 
+type Holiday = {
+  _id?: string;
+  name?: string;
+  date?: string;
+  category?: string;
+  [key: string]: unknown;
+};
+
+type Event = {
+  _id?: string;
+  name?: string;
+  date?: string;
+  location?: string;
+  status?: string;
+  [key: string]: unknown;
+};
+
+type Leave = {
+  _id?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  [key: string]: unknown;
+};
+
+type AttendanceRecord = {
+  _id?: string;
+  date?: string;
+  checkIn?: string;
+  checkOut?: string;
+  [key: string]: unknown;
+};
+
+type TodayAttendance = {
+  _id?: string;
+  date?: string;
+  checkIn?: string;
+  checkOut?: string;
+  [key: string]: unknown;
+} | null;
+
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [holidaySearch, setHolidaySearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"Company" | "Event" | "Birthday" | "All">("All");
-  const [holidays, setHolidays] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [leaves, setLeaves] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
-  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [leaves, setLeaves] = useState<Leave[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<TodayAttendance>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [employeeId, setEmployeeId] = useState<string>("");
 
