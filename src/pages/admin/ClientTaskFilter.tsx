@@ -70,10 +70,6 @@ const ClientTaskFilterPage = () => {
         return;
       }
 
-
-
-
-      
       setIsLoading(true);
       try {
         if (selectedClient === "all") {
